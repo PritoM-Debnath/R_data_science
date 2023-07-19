@@ -1,0 +1,44 @@
+dataset<-read.csv("dataset.csv")
+print(dataset)
+
+#summery of the data set
+summary(dataset)
+
+#finding the missing value
+colSums(is.na(dataset))
+
+#removing the NA's of age by mean value
+dataset$age <- ifelse(is.na(dataset$age),mean(dataset$age, na.rm = TRUE),dataset$age)
+dataset$age <- as.numeric(format(round(dataset$age, 0)))
+print(dataset)
+
+#ommiting the missing value for gender
+dataset <- na.omit(dataset)
+
+#Fixing the outlayers of age
+new_age <- function(dataset){
+  i=1
+  for(data in dataset){
+    while(data>100){
+      data <- data/10
+    }
+    dataset[i] <- data
+    i <- i+1
+  }
+  return (dataset)
+}
+dataset$age <- new_age(dataset$age)
+print(dataset)
+# Create a histogram for 'fare' column
+hist(dataset$fare, breaks = 'Sturges', xlab = 'Fare', ylab = 'Frequency', main = 'Histogram of Fare')
+# Create a histogram for the "age" column
+hist(dataset$age, main = "Histogram of Age", xlab = "Age", ylab = "Frequency", col = "lightblue", border = "black")
+
+# Calculate the standard deviation for 'fare' column
+fare_sd <- sd(dataset$fare)
+cat("Standard Deviation of Fare:", fare_sd, "\n")
+
+#change the FALL into FALSE
+dataset$alone[dataset$alone == "FALL"] <- "FALSE"
+
+
