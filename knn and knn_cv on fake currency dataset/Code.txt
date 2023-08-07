@@ -1,0 +1,109 @@
+library(class)  
+library(caret)
+library(ggpubr)
+
+dataset <- read.csv("fake_bills.csv")
+
+# Convert boolean to numeric (TRUE = 1, FALSE = 0)
+dataset$is_genuine <- as.numeric(dataset$is_genuine)
+summary(dataset)
+
+
+#checking for missing value
+any_missing <- any(is.na(dataset$margin_low))
+
+if (any_missing) {
+  cat("There are missing values in the dataset.\n")
+} else {
+  cat("No missing values found in the dataset.\n")
+}
+
+#replace missing value with the mean value
+mean_margin_low <- round(mean(dataset$margin_low, na.rm = TRUE),2)
+dataset$margin_low[is.na(dataset$margin_low)] <- mean_margin_low
+
+#Normalize the data set min max scaling 
+numeric_features <- c("diagonal", "height_left", "height_right", "margin_low", "margin_up", "length")
+#dataset[numeric_features] <- scale(dataset[numeric_features],center = TRUE, scale = TRUE)
+#dataset[numeric_features] <- scale(dataset[numeric_features], center = FALSE, scale = diff(range(dataset[numeric_features], na.rm = TRUE)))
+
+for (feature in numeric_features) {
+  min_val <- min(dataset[[feature]], na.rm = TRUE)
+  max_val <- max(dataset[[feature]], na.rm = TRUE)
+  dataset[[feature]] <- (dataset[[feature]] - min_val) / (max_val - min_val)
+}
+
+print(cor_with_target)
+
+#skewness of the dataset
+options(repr.plot.width=4,repr.plot.height=4)
+for( data in numeric_features){
+  nd<-rnorm(dataset[[data]])
+  hist(nd,breaks = 30,main = paste("Histogram of" , data))
+  var = as.character(readline(prompt = "Continue(y/n): "))
+  n<-"n"
+  if(tolower(var) == n){
+    break;
+  }
+}
+
+# Task 2: Correlation Analysis
+# Calculate correlations between attributes and the target variable
+cor_with_target <- cor(dataset[, numeric_features], dataset$is_genuine)
+
+# Identify important attributes with correlation greater than 0.2
+important_attributes <- names(which(abs(cor_with_target[,1]) > 0.2))
+cat("Important attributes:", paste(important_attributes, collapse = ", "), "\n")
+
+# Task 3: Apply KNN Classification
+# Prepare data for KNN (use only the important attributes)
+#knn_data <- dataset[, c("is_genuine","height_left","height_right","margin_low","margin_up","length")]
+knn_data <- dataset[, c("is_genuine","height_left","height_right","margin_low","margin_up","length")]
+# Task 4: KNN Classification
+# Split data into features (X) and target (y)
+X <- knn_data[, -1]
+#y <- knn_data$is_genuine
+y <- factor(knn_data$is_genuine, levels = c("0", "1"))
+# Task 5: Performance Evaluation
+# Dividing the data into training and test set
+set.seed(123)  # For reproducibility
+train_index <- createDataPartition(y, p = 0.8, list = FALSE)
+X_train <- X[train_index, ]
+y_train <- y[train_index]
+X_test <- X[-train_index, ]
+y_test <- y[-train_index]
+
+# Train KNN model
+k <- 5  # Choose an appropriate value for k
+knn_model <- knn(train = X_train, test = X_test, cl = y_train, k = k)
+
+# Calculate accuracy
+accuracy <- sum(knn_model == y_test) / length(y_test)
+
+# Task 6: 10-Fold Cross Validation
+# Train KNN model using 10-fold cross validation
+knn_model_cv <- train(
+  X, y, method = "knn",
+  tuneGrid = expand.grid(k = 1:20),
+  trControl = trainControl(method = "cv", number = 10)
+)
+
+# Calculate accuracy from cross validation
+accuracy_cv <- knn_model_cv$results$Accuracy[which.max(knn_model_cv$results$Accuracy)]
+
+# Task 7: Confusion Matrix, Recall, and Precision
+conf_matrix <- confusionMatrix(table(knn_model, y_test))
+recall <- conf_matrix$byClass["Sensitivity"]
+precision <- conf_matrix$byClass["Pos Pred Value"]
+
+# Print the results
+cat("Accuracy (Test Set):", accuracy, "\n")
+cat("Accuracy (10-Fold CV):", accuracy_cv, "\n")
+cat("Confusion Matrix:\n")
+print(conf_matrix$table)
+cat("Recall:", recall, "\n")
+cat("Precision:", precision, "\n")
+
+
+
+
